@@ -114,7 +114,7 @@ and gexp oc = function
       g oc n1;
       Printf.fprintf oc "    )\n    (else\n";
       g oc n2;
-      Printf.fprintf oc "    )\n";
+      Printf.fprintf oc "    ))\n";
   | IfLE(ty, x, y, n1, n2) ->
       Printf.fprintf oc "    get_local %s\n" (local_name x);
       Printf.fprintf oc "    get_local %s\n" (local_name y);
@@ -126,7 +126,7 @@ and gexp oc = function
       g oc n1;
       Printf.fprintf oc "    )\n    (else\n";
       g oc n2;
-      Printf.fprintf oc "    )\n";
+      Printf.fprintf oc "    ))\n";
   | IfFEq(ty, x, y, n1, n2) ->
       Printf.fprintf oc "    get_local %s\n" (local_name x);
       Printf.fprintf oc "    get_local %s\n" (local_name y);
@@ -138,7 +138,7 @@ and gexp oc = function
       g oc n1;
       Printf.fprintf oc "    )\n    (else\n";
       g oc n2;
-      Printf.fprintf oc "    )\n";
+      Printf.fprintf oc "    ))\n";
   | IfFLE(ty, x, y, n1, n2) ->
       Printf.fprintf oc "    get_local %s\n" (local_name x);
       Printf.fprintf oc "    get_local %s\n" (local_name y);
@@ -150,7 +150,7 @@ and gexp oc = function
       g oc n1;
       Printf.fprintf oc "    )\n    (else\n";
       g oc n2;
-      Printf.fprintf oc "    )\n";
+      Printf.fprintf oc "    ))\n";
   | CallCls(f, args) ->
       (* push arguments onto the stack. *)
       List.iter

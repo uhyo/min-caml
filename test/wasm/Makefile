@@ -18,7 +18,7 @@ do_test: $(TESTS:%=%.cmp)
 
 .PRECIOUS: %.wat %.wasm %.res %.ans %.cmp
 
-%.wat: %.ml
+%.wat: %.ml $(MINCAML)
 	$(MINCAML) $*
 %.wasm: %.wat libmincaml.js
 	$(WAT2WASM) $< -o $@

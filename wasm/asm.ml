@@ -94,9 +94,14 @@ and fv = function
 let fv e = remove_and_uniq S.empty (fv e)
 
 (* all local variables *)
-let rec localvs = function
-  | Ans(exp) -> []
-  | Let(xt, _, e) -> xt :: localvs e
+let rec localvs_exp = function
+  | IfEq(_, _, _, e1, e2) | IfLE(_, _, _, e1, e2)
+  | IfFEq(_, _, _, e1, e2) | IfFLE(_, _, _, e1, e2) ->
+      localvs e1 @ localvs e2
+  | _ -> []
+and localvs = function
+  | Ans(exp) -> localvs_exp exp
+  | Let(xt, exp, e) -> xt :: localvs_exp exp @ localvs e
 
 let rec concat e1 xt e2 =
   match e1 with
