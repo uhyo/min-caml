@@ -1,5 +1,7 @@
 (* PowerPC assembly with a few virtual instructions *)
 
+let extension = ".s"
+
 type id_or_imm = V of Id.t | C of int
 type t = (* Ì¿Îá¤ÎÎó (caml2html: sparcasm_t) *)
   | Ans of exp

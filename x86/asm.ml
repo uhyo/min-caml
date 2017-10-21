@@ -1,5 +1,7 @@
 (* 2オペランドではなく3オペランドのx86アセンブリもどき *)
 
+let extension = ".s"
+
 type id_or_imm = V of Id.t | C of int
 type t = (* 命令の列 (caml2html: sparcasm_t) *)
   | Ans of exp
