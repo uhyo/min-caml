@@ -24,7 +24,9 @@ let wat_type = function
 let func_sig oc = function
   | Type.Fun(tys, ret) ->
       List.iter
-        (fun ty -> Printf.fprintf oc "(param %s)" (wat_type ty))
+        (fun ty ->
+           if ty <> Type.Unit then
+             Printf.fprintf oc "(param %s)" (wat_type ty))
         tys;
       if ret <> Type.Unit then
         Printf.fprintf oc " (result %s)" (wat_type ret);
@@ -231,14 +233,25 @@ let f oc {typesigs; funtable; fundefs; externals; start} =
        Printf.fprintf oc "))\n")
     typesigs;
   (* Emit import declarations. *)
+  let flg_create_array = ref false in
+  let flg_create_float_array = ref false in
   List.iter
     (fun (Id.L(x), t) ->
-       Printf.fprintf oc "  (import \"%s\" \"%s\" (func %s "
-         "lib"
-         x
-         (func_name (Id.L(x)));
-       func_sig oc t;
-       Printf.fprintf oc "))\n")
+       (* ad-hoc interruption of importing *)
+       match x with
+         | "min_caml_create_array" ->
+             flg_create_array := true
+         | "min_caml_create_float_array" ->
+             flg_create_float_array := true
+         | _ ->
+             begin
+               Printf.fprintf oc "  (import \"%s\" \"%s\" (func %s "
+                 "lib"
+                 x
+                 (func_name (Id.L(x)));
+               func_sig oc t;
+               Printf.fprintf oc "))\n";
+             end)
     externals;
 
   (* Emit function definitions. *)
@@ -253,6 +266,73 @@ let f oc {typesigs; funtable; fundefs; externals; start} =
         funtable;
       Printf.fprintf oc ")\n";
     end;
+  (* Additional functions to communicate with external library. *)
+  if !flg_create_array then begin
+    Printf.fprintf oc "%s\n"
+      (String.concat "\n" [
+        "  (func $min_caml_create_array (param $num i32) (param $value i32) (result i32)";
+        "    (local $i i32) (local $res i32)";
+        Printf.sprintf "    get_global %s" (local_name global_hp);
+        "    set_local $res";
+        "    i32.const 0";
+        "    set_local $i";
+        "    loop $loop";
+        "      get_local $i";
+        "      get_local $num";
+        "      i32.lt_u";
+        "      if";
+        Printf.sprintf "        get_global %s" (local_name global_hp);
+        "        get_local $i";
+        "        i32.add";
+        "        get_local $value";
+        "        i32.store offset=0 align=4";
+        "        get_local $i";
+        "        i32.const 1";
+        "        i32.add";
+        "        set_local $i";
+        "        br $loop";
+        "      end";
+        "    end";
+        Printf.sprintf "    get_global %s" (local_name global_hp);
+        "    get_local $num";
+        "    i32.add";
+        Printf.sprintf "    set_global %s" (local_name global_hp);
+        "    get_local $res)";
+      ])
+  end;
+  if !flg_create_float_array then begin
+    Printf.fprintf oc "%s\n"
+      (String.concat "\n" [
+        "  (func $min_caml_create_array (param $num i32) (param $value f32) (result i32)";
+        "    (local $i i32) (local $res i32)";
+        Printf.sprintf "    get_global %s" (local_name global_hp);
+        "    set_local $res";
+        "    i32.const 0";
+        "    set_local $i";
+        "    loop $loop";
+        "      get_local $i";
+        "      get_local $num";
+        "      i32.lt_u";
+        "      if";
+        Printf.sprintf "        get_global %s" (local_name global_hp);
+        "        get_local $i";
+        "        i32.add";
+        "        get_local $value";
+        "        f32.store offset=0 align=4";
+        "        get_local $i";
+        "        i32.const 1";
+        "        i32.add";
+        "        set_local $i";
+        "        br $loop";
+        "      end";
+        "    end";
+        Printf.sprintf "    get_global %s" (local_name global_hp);
+        "    get_local $num";
+        "    i32.add";
+        Printf.sprintf "    set_global %s" (local_name global_hp);
+        "    get_local $res)";
+      ])
+  end;
   (* Require 192KiB of memory. *)
   Printf.fprintf oc "  (memory %d)\n" 3;
   (* Declare global variables. *)

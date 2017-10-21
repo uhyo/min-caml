@@ -7,103 +7,116 @@ type imm =
 
 let rec g env = function
   | Ans(exp) ->
-      let (exp', s) = g' env exp in
-        (Ans(exp'), s)
+      let (exp', s, r) = g' env exp in
+        (Ans(exp'), s, r)
   | Let((x, t), ((Consti(i)) as exp), e2) ->
       let env' = M.add x (Ii(i)) env in
-      let (e2', s) = g env' e2 in
+      let (exp', _, _) = g' env exp in
+      let (e2', s, r2) = g env' e2 in
         if S.mem x s then
-          (Let((x, t), fst (g' env exp), e2'), S.remove x s)
+          (Let((x, t), exp', e2'), S.remove x s, r2)
         else
-          (e2', s)
+          (e2', s, r2)
   | Let((x, t), ((Constf(f)) as exp), e2) ->
       let env' = M.add x (If(f)) env in
-      let (e2', s) = g env' e2 in
+      let (exp', _, _) = g' env exp in
+      let (e2', s, r2) = g env' e2 in
         if S.mem x s then
-          (Let((x, t), fst (g' env exp), e2'), S.remove x s)
+          (Let((x, t), exp', e2'), S.remove x s, r2)
         else
-          (e2', s)
+          (e2', s, r2)
   | Let((x, t), ((Var(y)) as exp), e2) ->
       let env' = M.add x (Iv(y)) env in
-      let (e2', s) = g env' e2 in
+      let (exp', _, _) = g' env exp in
+      let (e2', s, r2) = g env' e2 in
         if S.mem x s then
-          (Let((x, t), fst (g' env exp), e2'), s)
+          (Let((x, t), exp', e2'), s, r2)
         else
-          (e2', s)
+          (e2', s, r2)
   | Let((x, t), exp, e2) ->
-      let (exp', s1) = g' env exp in
-      let (e2', s2) = g env e2 in
-      (Let((x, t), exp', e2'), S.remove x (S.union s1 s2))
+      let (exp', s1, r1) = g' env exp in
+      let (e2', s2, r2) = g env e2 in
+        if S.mem x s2 || (not r1) then
+          (Let((x, t), exp', e2'), S.remove x (S.union s1 s2), r1 && r2)
+        else
+          (e2', s2, r1 && r2)
 and g' env = function
+  | Nop
+  | Consti(_)
+  | Constf(_)
+      as t -> (t, S.empty, true)
   | Add(x, y) ->
       let (x', s1) = gimm env x in
       let (y', s2) = gimm env y in
-        (Add(x', y'), S.union s1 s2)
+        (Add(x', y'), S.union s1 s2, true)
   | Sub(x, y) ->
       let (x', s1) = gimm env x in
       let (y', s2) = gimm env y in
-        (Sub(x', y'), S.union s1 s2)
+        (Sub(x', y'), S.union s1 s2, true)
   | Mul(x, y) ->
       let (x', s1) = gimm env x in
       let (y', s2) = gimm env y in
-        (Mul(x', y'), S.union s1 s2)
+        (Mul(x', y'), S.union s1 s2, true)
   | Div(x, y) ->
       let (x', s1) = gimm env x in
       let (y', s2) = gimm env y in
-        (Div(x', y'), S.union s1 s2)
+        (Div(x', y'), S.union s1 s2, true)
   | Shl(x, y) ->
       let (x', s1) = gimm env x in
       let (y', s2) = gimm env y in
-        (Shl(x', y'), S.union s1 s2)
+        (Shl(x', y'), S.union s1 s2, true)
   | FAdd(x, y) ->
       let (x', s1) = gimmf env x in
       let (y', s2) = gimmf env y in
-        (FAdd(x', y'), S.union s1 s2)
+        (FAdd(x', y'), S.union s1 s2, true)
   | FSub(x, y) ->
       let (x', s1) = gimmf env x in
       let (y', s2) = gimmf env y in
-        (FSub(x', y'), S.union s1 s2)
+        (FSub(x', y'), S.union s1 s2, true)
   | FMul(x, y) ->
       let (x', s1) = gimmf env x in
       let (y', s2) = gimmf env y in
-        (FMul(x', y'), S.union s1 s2)
+        (FMul(x', y'), S.union s1 s2, true)
   | FDiv(x, y) ->
       let (x', s1) = gimmf env x in
       let (y', s2) = gimmf env y in
-        (FDiv(x', y'), S.union s1 s2)
+        (FDiv(x', y'), S.union s1 s2, true)
+  | Loadi(x, _)
+  | Loadf(x, _) as t -> (t, S.singleton x, true)
   | Storei(v, x, c) ->
       let (v', s) = gimm env v in
-        (Storei(v', x, c), S.add x s)
+        (Storei(v', x, c), S.add x s, false)
   | Storef(v, x, c) ->
       let (v', s) = gimmf env v in
-        (Storef(v', x, c), S.add x s)
+        (Storef(v', x, c), S.add x s, false)
+  | GetGlobal(_) as t -> (t, S.empty, true)
   | SetGlobal(v, x) ->
       let (v', s) = gimm env v in
-      (SetGlobal(v', x), S.add x s)
+      (SetGlobal(v', x), S.add x s, false)
   | IfEq(ty, x, y, e1, e2) ->
       let (x', s1) = gimm env x in
       let (y', s2) = gimm env y in
-      let (e1', s3) = g env e1 in
-      let (e2', s4) = g env e2 in
-      (IfEq(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)))
+      let (e1', s3, r1) = g env e1 in
+      let (e2', s4, r2) = g env e2 in
+      (IfEq(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)), r1 && r2)
   | IfLE(ty, x, y, e1, e2) ->
       let (x', s1) = gimm env x in
       let (y', s2) = gimm env y in
-      let (e1', s3) = g env e1 in
-      let (e2', s4) = g env e2 in
-      (IfLE(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)))
+      let (e1', s3, r1) = g env e1 in
+      let (e2', s4, r2) = g env e2 in
+      (IfLE(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)), r1 && r2)
   | IfFEq(ty, x, y, e1, e2) ->
       let (x', s1) = gimmf env x in
       let (y', s2) = gimmf env y in
-      let (e1', s3) = g env e1 in
-      let (e2', s4) = g env e2 in
-      (IfFEq(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)))
+      let (e1', s3, r1) = g env e1 in
+      let (e2', s4, r2) = g env e2 in
+      (IfFEq(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)), r1 && r2)
   | IfFLE(ty, x, y, e1, e2) ->
       let (x', s1) = gimmf env x in
       let (y', s2) = gimmf env y in
-      let (e1', s3) = g env e1 in
-      let (e2', s4) = g env e2 in
-      (IfFLE(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)))
+      let (e1', s3, r1) = g env e1 in
+      let (e2', s4, r2) = g env e2 in
+      (IfFLE(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)), r1 && r2)
   | CallCls(x, y, args, fargs) ->
       let (args', s) =
         List.fold_right
@@ -112,14 +125,14 @@ and g' env = function
                (z'::args', S.union s1 s))
           args
           ([], S.empty) in
-      let (fargs', ss) =
+      let (fargs', s) =
         List.fold_right
           (fun z (fargs', s) ->
              let (z', s1) = gimmf env z in
                (z'::fargs', S.union s1 s))
           fargs
-          ([], S.empty) in
-        (CallCls(x, y, args', fargs'), S.union s ss)
+          ([], s) in
+        (CallCls(x, y, args', fargs'), s, false)
   | CallDir(x, args, fargs) ->
       let (args', s) =
         List.fold_right
@@ -128,22 +141,24 @@ and g' env = function
                (z'::args', S.union s1 s))
           args
           ([], S.empty) in
-      let (fargs', ss) =
+      let (fargs', s) =
         List.fold_right
           (fun z (fargs', s) ->
              let (z', s1) = gimmf env z in
                (z'::fargs', S.union s1 s))
           fargs
-          ([], S.empty) in
-        (CallDir(x, args', fargs'), S.union s ss)
+          ([], s) in
+        (CallDir(x, args', fargs'), s, false)
   | Var(x) when M.mem x env ->
       begin
         match M.find x env with
-          | Ii(i) -> (Consti(i), S.empty)
-          | If(f) -> (Constf(f), S.empty)
-          | Iv(y) -> (Var(y), S.singleton y)
+          | Ii(i) -> (Consti(i), S.empty, true)
+          | If(f) -> (Constf(f), S.empty, true)
+          | Iv(y) -> (Var(y), S.singleton y, true)
       end
-  | t -> (t, S.of_list (fv_exp t))
+  | Var(x) as t -> (t, S.singleton x, true)
+  | FunTableIndex(_) as t -> (t, S.empty, true)
+  | ExtArray(_) as t -> (t, S.empty, true)
 and gimm env = function
   | V(x) when M.mem x env ->
       begin
@@ -166,7 +181,8 @@ and gimmf env = function
   | v -> (v, S.empty)
 
 let h { name = l; args; fargs; body = e; ret = t } =
-  { name = l; args; fargs; body = fst (g M.empty e); ret = t }
+  let (e', _, _) = g M.empty e in
+  { name = l; args; fargs; body = e'; ret = t }
 
 let f prog =
   {

@@ -20,5 +20,9 @@
         min_caml_print_int(v){
             writer(String(v));
         },
+        /*
+        min_caml_create_array(num, value){
+        },
+       */
     };
 });

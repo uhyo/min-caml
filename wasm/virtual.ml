@@ -23,8 +23,8 @@ let classify_if xts =
   classify
     xts
     ([], [])
-    (fun (int, float) x -> (int, (Vf(x))::float))
-    (fun (int, float) x _ -> ((V(x))::int, float))
+    (fun (int, float) x -> (int, float @ [(Vf(x))]))
+    (fun (int, float) x _ -> (int @ [(V(x))], float))
 
 let expand xts ini addf addi =
   classify
@@ -211,11 +211,15 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts
               (* firstly, load closure pointer from the global variable. *)
               Let((p, Type.Int), GetGlobal(global_cp), b)
           end in
-      let (args, fargs) = classify
-                            yts
-                            ([], [])
-                            (fun (args, fargs) x -> (args, x::fargs))
-                            (fun (args, fargs) x _ -> (x::args, fargs)) in
+      (* define myself. *)
+      let body =
+        Let((x, t), FunTableIndex(Id.L(x)), body) in
+      let (args, fargs) =
+        classify
+          yts
+          ([], [])
+          (fun (args, fargs) x -> (args, fargs @ [x]))
+          (fun (args, fargs) x _ -> (args @ [x], fargs)) in
         { name = Id.L(x); args; fargs; body = body; ret = t2 }
   | _ -> assert false
 
