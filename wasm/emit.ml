@@ -276,6 +276,10 @@ let f oc {typesigs; funtable; fundefs; externals; start} =
         "    set_local $res";
         "    i32.const 0";
         "    set_local $i";
+        "    get_local $num";
+        "    i32.const 2";
+        "    i32.shl";
+        "    set_local $num";
         "    loop $loop";
         "      get_local $i";
         "      get_local $num";
@@ -287,7 +291,7 @@ let f oc {typesigs; funtable; fundefs; externals; start} =
         "        get_local $value";
         "        i32.store offset=0 align=4";
         "        get_local $i";
-        "        i32.const 1";
+        "        i32.const 4";
         "        i32.add";
         "        set_local $i";
         "        br $loop";
@@ -303,12 +307,16 @@ let f oc {typesigs; funtable; fundefs; externals; start} =
   if !flg_create_float_array then begin
     Printf.fprintf oc "%s\n"
       (String.concat "\n" [
-        "  (func $min_caml_create_array (param $num i32) (param $value f32) (result i32)";
+        "  (func $min_caml_create_float_array (param $num i32) (param $value f32) (result i32)";
         "    (local $i i32) (local $res i32)";
         Printf.sprintf "    get_global %s" (local_name global_hp);
         "    set_local $res";
         "    i32.const 0";
         "    set_local $i";
+        "    get_local $num";
+        "    i32.const 2";
+        "    i32.shl";
+        "    set_local $num";
         "    loop $loop";
         "      get_local $i";
         "      get_local $num";
@@ -320,7 +328,7 @@ let f oc {typesigs; funtable; fundefs; externals; start} =
         "        get_local $value";
         "        f32.store offset=0 align=4";
         "        get_local $i";
-        "        i32.const 1";
+        "        i32.const 4";
         "        i32.add";
         "        set_local $i";
         "        br $loop";

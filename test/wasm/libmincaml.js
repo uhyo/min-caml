@@ -20,9 +20,11 @@
         min_caml_print_int(v){
             writer(String(v));
         },
-        /*
-        min_caml_create_array(num, value){
+        min_caml_print_newline(){
+            writer('\n');
         },
-       */
+        min_caml_truncate(num){
+            return Math.trunc(num);
+        },
     };
 });
