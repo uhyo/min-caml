@@ -43,6 +43,7 @@ let h { name = l; args; body = e; ret = t } =
 
 let f prog =
   {
+    typesigs = prog.typesigs;
     funtable = prog.funtable;
     fundefs = List.map h prog.fundefs;
     externals = prog.externals;

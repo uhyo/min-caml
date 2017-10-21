@@ -1,6 +1,8 @@
 open Asm
 
 let data = ref []
+(* Table of type signatures. *)
+let type_sigs = ref M.empty
 (* Table of functions, used by `call_index`. *)
 let func_table = ref []
 (* Table of external fuctions. *)
@@ -77,9 +79,9 @@ let rec g env ty = function
           (List.map (fun y -> (y, M.find y env)) ys)
           (4, e2')
           (fun (offset, t) y -> 
-             (offset + 4, seq(Storef(y, m, offset), t)))
+             (offset + 4, seq(Storef(y, z, offset), t)))
           (fun (offset, t) y _ -> 
-             (offset + 4, seq(Storei(y, m, offset), t))) in
+             (offset + 4, seq(Storei(y, z, offset), t))) in
       let () = register_func_table l t in
       (* global_hpを取得した後移動させる *)
       Let((x, Type.Int), GetGlobal(global_hp),
@@ -91,7 +93,13 @@ let rec g env ty = function
                           seq(Storei(z, x, 0),
                               store_fv))))))
   | Closure.AppCls(x, ys) ->
-      Ans(CallCls(x, ys))
+      (* xの型情報を残す *)
+      let fty = M.find x env in
+      let sigid = "sig." ^ x in
+      let () = type_sigs := M.add sigid fty !type_sigs in
+        (* グローバル変数にクロージャのアドレスを保存 *)
+        seq(SetGlobal(x, global_cp),
+            Ans(CallCls(x, sigid, ys)))
   | Closure.AppDir(Id.L(x), ys) ->
       (* [XXX] ad-hoc detection of external function *)
       if 9 <= String.length x && "min_caml_" = String.sub x 0 9 then
@@ -182,12 +190,31 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts
   match t with
   | Type.Fun(_, t2) ->
       let body = g (M.add x t (M.add_list yts (M.add_list zts M.empty))) t2 e in
-        { name = Id.L(x); args = yts @ zts; body = body; ret = t2 }
+        (* Load free variables from closure. *)
+      let body =
+        if zts = [] then body
+        else
+          begin
+            let p = Id.genid "m" in (* closure pointer *)
+            (* load free variables from memory. *)
+            let (_, b) =
+              classify
+                zts
+                (4, body)
+                (fun (offset, e2) z ->
+                   (offset + 4, Let((z, Type.Float), Loadf(p, offset), e2)))
+                (fun (offset, e2) z t ->
+                   (offset + 4, Let((z, t), Loadi(p, offset), e2))) in
+              (* firstly, load closure pointer from the global variable. *)
+              Let((p, Type.Int), GetGlobal(global_cp), b)
+          end in
+        { name = Id.L(x); args = yts; body = body; ret = t2 }
   | _ -> assert false
 
 let f (Closure.Prog(fundefs, e)) =
   func_table := [];
   external_func := M.empty;
+  type_sigs := M.empty;
   (* function definitions *)
   let fundefs = List.map h fundefs in
   (* main function *)
@@ -202,7 +229,9 @@ let f (Closure.Prog(fundefs, e)) =
   let externals =
     List.map (fun (x, t) -> (Id.L(x), t)) @@
     M.bindings !external_func in
+  let typesigs = M.bindings !type_sigs in
     {
+      typesigs = typesigs;
       funtable = !func_table;
       fundefs = fundefs;
       externals = externals;

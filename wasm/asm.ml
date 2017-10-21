@@ -34,8 +34,8 @@ and exp =
   | IfLE of Type.t * Id.t * Id.t * t * t
   | IfFEq of Type.t * Id.t * Id.t * t * t
   | IfFLE of Type.t * Id.t * Id.t * t * t
-  (* closure address, integer arguments, and float arguments *)
-  | CallCls of Id.t * Id.t list
+  (* closure address, expected closure type, arguments *)
+  | CallCls of Id.t * Id.t * Id.t list
   | CallDir of Id.l * Id.t list
   (* virtual instructions *)
   | Var of Id.t
@@ -49,12 +49,14 @@ type fentry = {
 }
 (* Module (whole program)
  * A module consists of:
+ * * a set of type signatures.
  * * a function table.
  * * a set of function definitions.
  * * a set of imported functions.
  * * name of start function.
  *)
 type prog = {
+  typesigs: (Id.t * Type.t) list;
   funtable: fentry list;
   fundefs: fundef list;
   externals: (Id.l * Type.t) list;
@@ -62,7 +64,8 @@ type prog = {
 }
 
 (* Global variables *)
-let global_hp = "@hp"
+let global_hp = "@hp" (* heap pointer *)
+let global_cp = "@cp" (* closure pointer *)
 
 
 let seq(e1, e2) = Let((Id.gentmp Type.Unit, Type.Unit), e1, e2)
@@ -85,7 +88,7 @@ let rec fv_exp = function
   | Storei(x, y, _) | Storef(x, y, _) -> [x; y]
   | IfEq(_, x, y, e1, e2) | IfLE(_, x, y, e1, e2)
   | IfFEq(_, x, y, e1, e2) | IfFLE(_, x, y, e1, e2) -> x :: y :: remove_and_uniq S.empty (fv e1 @ fv e2) (* uniq here just for efficiency *)
-  | CallCls(x, ys) -> x :: ys
+  | CallCls(x, _, ys) -> x :: ys
   | CallDir(_, ys) -> ys
 and fv = function
   | Ans(exp) -> fv_exp exp

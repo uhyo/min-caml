@@ -27,7 +27,7 @@ let func_sig oc = function
         (fun ty -> Printf.fprintf oc "(param %s)" (wat_type ty))
         tys;
       if ret <> Type.Unit then
-        Printf.fprintf oc "(result %s)" (wat_type ret);
+        Printf.fprintf oc " (result %s)" (wat_type ret);
   | _ -> assert false 
 
 let rec g oc = function
@@ -151,20 +151,16 @@ and gexp oc = function
       Printf.fprintf oc "    )\n    (else\n";
       g oc n2;
       Printf.fprintf oc "    ))\n";
-  | CallCls(f, args) ->
+  | CallCls(f, sign, args) ->
       (* push arguments onto the stack. *)
       List.iter
         (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
         args;
-      (* Fv address as the last argument. *)
-      Printf.fprintf oc "    get_local %s\n" (local_name f);
-      Printf.fprintf oc "    i32.const 4\n";
-      Printf.fprintf oc "    i32.add\n";
       (* Load function index. *)
       Printf.fprintf oc "    get_local %s\n" (local_name f);
       Printf.fprintf oc "    i32.load offset=0 align=4\n";
       (* call. *)
-      Printf.fprintf oc "    call_indirect TODO\n";
+      Printf.fprintf oc "    call_indirect %s\n" (local_name sign);
   | CallDir(f, args) ->
       (* push arguments onto the stack. *)
       List.iter
@@ -199,6 +195,7 @@ let h oc { name; args; body = e; ret } =
     Printf.fprintf oc " (result %s)"
       (wat_type ret);
   (* Declare local variables. *)
+  Printf.fprintf oc "\n   ";
   List.iter
     (fun (x, t) ->
        Printf.fprintf oc " (local %s %s)"
@@ -210,11 +207,19 @@ let h oc { name; args; body = e; ret } =
   g oc e;
   Printf.fprintf oc ")\n"
 
-let f oc {funtable; fundefs; externals; start} =
+let f oc {typesigs; funtable; fundefs; externals; start} =
   fentries := funtable;
   Format.eprintf "generating assembly...@.";
   (* Currently we use the Text Format of WebAssembly. *)
   Printf.fprintf oc "(module\n";
+  (* Emit declared type signatures. *)
+  List.iter
+    (fun (s, t) ->
+       Printf.fprintf oc "  (type %s (func "
+         (local_name s);
+       func_sig oc t;
+       Printf.fprintf oc "))\n")
+    typesigs;
   (* Emit import declarations. *)
   List.iter
     (fun (Id.L(x), t) ->
@@ -238,9 +243,13 @@ let f oc {funtable; fundefs; externals; start} =
         funtable;
       Printf.fprintf oc ")\n";
     end;
+  (* Require 192KiB of memory. *)
+  Printf.fprintf oc "  (memory %d)\n" 3;
   (* Declare global variables. *)
   Printf.fprintf oc "  (global %s (mut i32) i32.const 0)\n"
     (local_name global_hp);
+  Printf.fprintf oc "  (global %s (mut i32) i32.const 0)\n"
+    (local_name global_cp);
   (* Declare start function. *)
   Printf.fprintf oc "  (start %s)\n" (func_name start);
   (* End of module. *)
