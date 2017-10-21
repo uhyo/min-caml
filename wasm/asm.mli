@@ -34,8 +34,8 @@ and exp =
   | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
   | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
   (* closure address, expected closure type, arguments *)
-  | CallCls of Id.t * Id.t * Id.t list * Id.t list
-  | CallDir of Id.l * Id.t list * Id.t list
+  | CallCls of Id.t * Id.t * id_or_imm list * id_or_immf list
+  | CallDir of Id.l * id_or_imm list * id_or_immf list
   (* virtual instructions *)
   | Var of Id.t
   | FunTableIndex of Id.l (* get index of function registerd in *the* table. *)

@@ -23,8 +23,8 @@ let classify_if xts =
   classify
     xts
     ([], [])
-    (fun (int, float) x -> (int, x::float))
-    (fun (int, float) x _ -> (x::int, float))
+    (fun (int, float) x -> (int, (Vf(x))::float))
+    (fun (int, float) x _ -> ((V(x))::int, float))
 
 let expand xts ini addf addi =
   classify

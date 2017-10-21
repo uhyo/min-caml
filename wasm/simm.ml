@@ -104,6 +104,38 @@ and g' env = function
       let (e1', s3) = g env e1 in
       let (e2', s4) = g env e2 in
       (IfFLE(ty, x', y', e1', e2'), S.union s1 (S.union s2 (S.union s3 s4)))
+  | CallCls(x, y, args, fargs) ->
+      let (args', s) =
+        List.fold_right
+          (fun z (args', s) ->
+             let (z', s1) = gimm env z in
+               (z'::args', S.union s1 s))
+          args
+          ([], S.empty) in
+      let (fargs', ss) =
+        List.fold_right
+          (fun z (fargs', s) ->
+             let (z', s1) = gimmf env z in
+               (z'::fargs', S.union s1 s))
+          fargs
+          ([], S.empty) in
+        (CallCls(x, y, args', fargs'), S.union s ss)
+  | CallDir(x, args, fargs) ->
+      let (args', s) =
+        List.fold_right
+          (fun z (args', s) ->
+             let (z', s1) = gimm env z in
+               (z'::args', S.union s1 s))
+          args
+          ([], S.empty) in
+      let (fargs', ss) =
+        List.fold_right
+          (fun z (fargs', s) ->
+             let (z', s1) = gimmf env z in
+               (z'::fargs', S.union s1 s))
+          fargs
+          ([], S.empty) in
+        (CallDir(x, args', fargs'), S.union s ss)
   | Var(x) when M.mem x env ->
       begin
         match M.find x env with

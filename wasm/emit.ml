@@ -153,12 +153,8 @@ and gexp oc = function
       Printf.fprintf oc "    ))\n";
   | CallCls(f, sign, args, fargs) ->
       (* push arguments onto the stack. *)
-      List.iter
-        (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
-        args;
-      List.iter
-        (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
-        fargs;
+      List.iter (gv oc) args;
+      List.iter (gvf oc) fargs;
       (* Load function index. *)
       Printf.fprintf oc "    get_local %s\n" (local_name f);
       Printf.fprintf oc "    i32.load offset=0 align=4\n";
@@ -166,12 +162,8 @@ and gexp oc = function
       Printf.fprintf oc "    call_indirect %s\n" (local_name sign);
   | CallDir(f, args, fargs) ->
       (* push arguments onto the stack. *)
-      List.iter
-        (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
-        args;
-      List.iter
-        (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
-        fargs;
+      List.iter (gv oc) args;
+      List.iter (gvf oc) fargs;
       (* call. *)
       Printf.fprintf oc "    call %s\n" (func_name f);
   | Var(x) ->

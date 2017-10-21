@@ -37,8 +37,8 @@ and exp =
   | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
   | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
   (* closure address, expected closure type, int arguments, float arguments *)
-  | CallCls of Id.t * Id.t * Id.t list * Id.t list
-  | CallDir of Id.l * Id.t list * Id.t list
+  | CallCls of Id.t * Id.t * id_or_imm list * id_or_immf list
+  | CallDir of Id.l * id_or_imm list * id_or_immf list
   (* virtual instructions *)
   | Var of Id.t
   | FunTableIndex of Id.l (* get index of function registerd in *the* table. *)
@@ -98,8 +98,23 @@ let rec fv_exp = function
   | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) -> fv_immf x @ fv_immf y
   | IfEq(_, x, y, e1, e2) | IfLE(_, x, y, e1, e2) -> fv_imm x @ fv_imm y @ remove_and_uniq S.empty (fv e1 @ fv e2)
   | IfFEq(_, x, y, e1, e2) | IfFLE(_, x, y, e1, e2) -> fv_immf x @ fv_immf y @ remove_and_uniq S.empty (fv e1 @ fv e2)
-  | CallCls(x, _, ys, zs) -> x :: ys @ zs
-  | CallDir(_, ys, zs) -> ys @ zs
+  | CallCls(x, _, ys, zs) -> x :: List.fold_left
+                                    (fun res y -> fv_imm y @ res)
+                                    []
+                                    ys @
+                             List.fold_left
+                                    (fun res y -> fv_immf y @ res)
+                                    []
+                                    zs
+  | CallDir(_, ys, zs) ->
+      List.fold_left
+        (fun res y -> fv_imm y @ res)
+        []
+        ys @
+      List.fold_left
+        (fun res y -> fv_immf y @ res)
+        []
+        zs
 and fv = function
   | Ans(exp) -> fv_exp exp
   | Let((x, t), exp, e) ->
