@@ -3,6 +3,8 @@
 (* extension of assembly file. *)
 let extension = ".wat"
 
+type id_or_imm = V of Id.t | C of int
+type id_or_immf= Vf of Id.t | F of float
 type t = 
   | Ans of exp
   | Let of (Id.t * Type.t) * exp * t
@@ -12,28 +14,28 @@ and exp =
   | Consti of int
   | Constf of float
   (* arithmetic *)
-  | Add of Id.t * Id.t
-  | Sub of Id.t * Id.t
-  | Mul of Id.t * Id.t
-  | Div of Id.t * Id.t
-  | Shl of Id.t * Id.t
-  | FAdd of Id.t * Id.t
-  | FSub of Id.t * Id.t
-  | FMul of Id.t * Id.t
-  | FDiv of Id.t * Id.t
+  | Add of id_or_imm * id_or_imm
+  | Sub of id_or_imm * id_or_imm
+  | Mul of id_or_imm * id_or_imm
+  | Div of id_or_imm * id_or_imm
+  | Shl of id_or_imm * id_or_imm
+  | FAdd of id_or_immf * id_or_immf
+  | FSub of id_or_immf * id_or_immf
+  | FMul of id_or_immf * id_or_immf
+  | FDiv of id_or_immf * id_or_immf
   (* linear memory *)
   | Loadi of Id.t * int
   | Loadf of Id.t * int
-  | Storei of Id.t * Id.t * int (* value, address, offset *)
-  | Storef of Id.t * Id.t * int
+  | Storei of id_or_imm * Id.t * int (* value, address, offset *)
+  | Storef of id_or_immf * Id.t * int
   (* globals *)
   | GetGlobal of Id.t
-  | SetGlobal of Id.t * Id.t (* value, global name *)
+  | SetGlobal of id_or_imm * Id.t (* value, global name *)
   (* control instructions *)
-  | IfEq of Type.t * Id.t * Id.t * t * t
-  | IfLE of Type.t * Id.t * Id.t * t * t
-  | IfFEq of Type.t * Id.t * Id.t * t * t
-  | IfFLE of Type.t * Id.t * Id.t * t * t
+  | IfEq of Type.t * id_or_imm * id_or_imm * t * t
+  | IfLE of Type.t * id_or_imm * id_or_imm * t * t
+  | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
+  | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
   (* closure address, expected closure type, arguments *)
   | CallCls of Id.t * Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -77,17 +79,25 @@ let rec remove_and_uniq xs = function
   | x :: ys -> x :: remove_and_uniq (S.add x xs) ys
 
 (* free variables in the order of use (for spilling) (caml2html: sparcasm_fv) *)
+let fv_imm = function
+  | V(x) -> [x]
+  | _ -> []
+let fv_immf = function
+  | Vf(x) -> [x]
+  | _ -> []
 let rec fv_exp = function
   | Nop | Consti(_) | Constf(_) | GetGlobal(_) 
   | FunTableIndex(_) | ExtArray(_) -> []
-  | Loadi(x, _)  | Loadf(x, _) | SetGlobal(x, _)
+  | Loadi(x, _)  | Loadf(x, _)
   | Var(x) -> [x]
+  | SetGlobal(x, _) -> fv_imm x
+  | Storei(x, y, _) -> y :: fv_imm x
+  | Storef(x, y, _) -> y :: fv_immf x
   | Add(x, y) | Sub(x, y) | Mul(x, y) | Div(x, y)
-  | Shl(x, y)
-  | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) 
-  | Storei(x, y, _) | Storef(x, y, _) -> [x; y]
-  | IfEq(_, x, y, e1, e2) | IfLE(_, x, y, e1, e2)
-  | IfFEq(_, x, y, e1, e2) | IfFLE(_, x, y, e1, e2) -> x :: y :: remove_and_uniq S.empty (fv e1 @ fv e2) (* uniq here just for efficiency *)
+  | Shl(x, y) -> fv_imm x @fv_imm y
+  | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) -> fv_immf x @ fv_immf y
+  | IfEq(_, x, y, e1, e2) | IfLE(_, x, y, e1, e2) -> fv_imm x @ fv_imm y @ remove_and_uniq S.empty (fv e1 @ fv e2)
+  | IfFEq(_, x, y, e1, e2) | IfFLE(_, x, y, e1, e2) -> fv_immf x @ fv_immf y @ remove_and_uniq S.empty (fv e1 @ fv e2)
   | CallCls(x, _, ys) -> x :: ys
   | CallDir(_, ys) -> ys
 and fv = function

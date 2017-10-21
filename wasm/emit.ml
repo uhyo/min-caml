@@ -49,40 +49,40 @@ and gexp oc = function
   | Constf(f) ->
       Printf.fprintf oc "    f32.const %f\n" f
   | Add(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gv oc x;
+      gv oc y;
       Printf.fprintf oc "    i32.add\n";
   | Sub(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gv oc x;
+      gv oc y;
       Printf.fprintf oc "    i32.sub\n";
   | Mul(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gv oc x;
+      gv oc y;
       Printf.fprintf oc "    i32.mul\n";
   | Div(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gv oc x;
+      gv oc y;
       Printf.fprintf oc "    i32.div_s\n";
   | Shl(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gv oc x;
+      gv oc y;
       Printf.fprintf oc "    i32.shl\n";
   | FAdd(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gvf oc x;
+      gvf oc y;
       Printf.fprintf oc "    f32.add\n";
   | FSub(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gvf oc x;
+      gvf oc y;
       Printf.fprintf oc "    f32.sub\n";
   | FMul(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gvf oc x;
+      gvf oc y;
       Printf.fprintf oc "    f32.mul\n";
   | FDiv(x, y) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gvf oc x;
+      gvf oc y;
       Printf.fprintf oc "    f32.div_s\n";
   | Loadi(x, c) ->
       Printf.fprintf oc "    get_local %s\n" (local_name x);
@@ -92,20 +92,20 @@ and gexp oc = function
       Printf.fprintf oc "    f32.load offset=%d align=4\n" c;
   | Storei(v, x, c) ->
       Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name v);
+      gv oc v;
       Printf.fprintf oc "    i32.store offset=%d align=4\n" c;
   | Storef(v, x, c) ->
       Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name v);
+      gvf oc v;
       Printf.fprintf oc "    f32.store offset=%d align=4\n" c;
   | GetGlobal(x) ->
       Printf.fprintf oc "    get_global %s\n" (local_name x);
   | SetGlobal(v, x) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name v);
+      gv oc v;
       Printf.fprintf oc "    set_global %s\n" (local_name x);
   | IfEq(ty, x, y, n1, n2) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gv oc x;
+      gv oc y;
       Printf.fprintf oc "    i32.eq\n";
       if ty = Type.Unit then
         Printf.fprintf oc "    (if (then\n"
@@ -116,8 +116,8 @@ and gexp oc = function
       g oc n2;
       Printf.fprintf oc "    ))\n";
   | IfLE(ty, x, y, n1, n2) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gv oc x;
+      gv oc y;
       Printf.fprintf oc "    i32.le_s\n";
       if ty = Type.Unit then
         Printf.fprintf oc "    (if (then\n"
@@ -128,8 +128,8 @@ and gexp oc = function
       g oc n2;
       Printf.fprintf oc "    ))\n";
   | IfFEq(ty, x, y, n1, n2) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gvf oc x;
+      gvf oc y;
       Printf.fprintf oc "    f32.eq\n";
       if ty = Type.Unit then
         Printf.fprintf oc "    (if (then\n"
@@ -140,8 +140,8 @@ and gexp oc = function
       g oc n2;
       Printf.fprintf oc "    ))\n";
   | IfFLE(ty, x, y, n1, n2) ->
-      Printf.fprintf oc "    get_local %s\n" (local_name x);
-      Printf.fprintf oc "    get_local %s\n" (local_name y);
+      gvf oc x;
+      gvf oc y;
       Printf.fprintf oc "    f32.le\n";
       if ty = Type.Unit then
         Printf.fprintf oc "    (if (then\n"
@@ -180,6 +180,12 @@ and gexp oc = function
       end
   | ExtArray(x) ->
       Printf.fprintf oc "    TODO ;; ExtArray\n"
+and gv oc = function
+  | V(x) -> Printf.fprintf oc "    get_local %s\n" (local_name x)
+  | C(i) -> Printf.fprintf oc "    i32.const %d\n" i
+and gvf oc = function
+  | Vf(x) -> Printf.fprintf oc "    get_local %s\n" (local_name x)
+  | F(f) -> Printf.fprintf oc "    f32.const %f\n" f
 
 let h oc { name; args; body = e; ret } =
   (* Emit a function definition. *)
@@ -237,9 +243,9 @@ let f oc {typesigs; funtable; fundefs; externals; start} =
   if funtable <> [] then
     begin
       Printf.fprintf oc "  (table %d anyfunc)\n" (List.length funtable);
-      Printf.fprintf oc "  (elem (i32.const 0) ";
+      Printf.fprintf oc "  (elem (i32.const 0)";
       List.iter
-        (fun {name} -> Printf.fprintf oc "%s" (func_name name))
+        (fun {name} -> Printf.fprintf oc " %s" (func_name name))
         funtable;
       Printf.fprintf oc ")\n";
     end;

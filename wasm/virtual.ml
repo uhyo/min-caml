@@ -43,26 +43,26 @@ let rec g env ty = function
   | Closure.Neg(x) ->
       let y = Id.genid "i" in
         Let((y, Type.Int), Consti(0),
-            Ans(Sub(y, x)))
-  | Closure.Add(x, y) -> Ans(Add(x, y))
-  | Closure.Sub(x, y) -> Ans(Sub(x, y))
+            Ans(Sub(V(y), V(x))))
+  | Closure.Add(x, y) -> Ans(Add(V(x), V(y)))
+  | Closure.Sub(x, y) -> Ans(Sub(V(x), V(y)))
   | Closure.FNeg(x) ->
       let y = Id.genid "f" in
         Let((y, Type.Float), Constf(0.0),
-            Ans(FSub(y, x)))
-  | Closure.FAdd(x, y) -> Ans(FAdd(x, y))
-  | Closure.FSub(x, y) -> Ans(FSub(x, y))
-  | Closure.FMul(x, y) -> Ans(FMul(x, y))
-  | Closure.FDiv(x, y) -> Ans(FDiv(x, y))
+            Ans(FSub(Vf(y), Vf(x))))
+  | Closure.FAdd(x, y) -> Ans(FAdd(Vf(x), Vf(y)))
+  | Closure.FSub(x, y) -> Ans(FSub(Vf(x), Vf(y)))
+  | Closure.FMul(x, y) -> Ans(FMul(Vf(x), Vf(y)))
+  | Closure.FDiv(x, y) -> Ans(FDiv(Vf(x), Vf(y)))
   | Closure.IfEq(x, y, e1, e2) ->
       (match M.find x env with
-      | Type.Bool | Type.Int -> Ans(IfEq(ty, x, y, g env ty e1, g env ty e2))
-      | Type.Float -> Ans(IfFEq(ty, x, y, g env ty e1, g env ty e2))
+      | Type.Bool | Type.Int -> Ans(IfEq(ty, V(x), V(y), g env ty e1, g env ty e2))
+      | Type.Float -> Ans(IfFEq(ty, Vf(x), Vf(y), g env ty e1, g env ty e2))
       | _ -> failwith "equality supported only for bool, int, and float")
   | Closure.IfLE(x, y, e1, e2) ->
       (match M.find x env with
-      | Type.Bool | Type.Int -> Ans(IfLE(ty, x, y, g env ty e1, g env ty e2))
-      | Type.Float -> Ans(IfFLE(ty, x, y, g env ty e1, g env ty e2))
+      | Type.Bool | Type.Int -> Ans(IfLE(ty, V(x), V(y), g env ty e1, g env ty e2))
+      | Type.Float -> Ans(IfFLE(ty, Vf(x), Vf(y), g env ty e1, g env ty e2))
       | _ -> failwith "inequality supported only for bool, int, and float")
   | Closure.Let((x, t1), e1, e2) ->
       let e1' = g env t1 e1 in
@@ -72,33 +72,31 @@ let rec g env ty = function
   | Closure.MakeCls((x, t), { Closure.entry = l; Closure.actual_fv = ys }, e2) -> 
       let e2' = g (M.add x t env) ty e2 in
       let m = Id.genid "m" in (* cls作成後のglobal_hpの値 *)
-      let offv = Id.genid "i" in (* offsetの即値 *)
       let z = Id.genid "l" in (* closureのindex *)
       let offset, store_fv =
         classify
           (List.map (fun y -> (y, M.find y env)) ys)
           (4, e2')
           (fun (offset, t) y -> 
-             (offset + 4, seq(Storef(y, z, offset), t)))
+             (offset + 4, seq(Storef(Vf(y), z, offset), t)))
           (fun (offset, t) y _ -> 
-             (offset + 4, seq(Storei(y, z, offset), t))) in
+             (offset + 4, seq(Storei(V(y), z, offset), t))) in
       let () = register_func_table l t in
       (* global_hpを取得した後移動させる *)
       Let((x, Type.Int), GetGlobal(global_hp),
-          Let((offv, Type.Int), Consti(offset),
-              Let((m, Type.Int), Add(x, offv),
-                  seq(SetGlobal(m, global_hp),
-                      (* 関数のindexを保存 *)
-                      Let((z, Type.Int), FunTableIndex(l),
-                          seq(Storei(z, x, 0),
-                              store_fv))))))
+          Let((m, Type.Int), Add(V(x), C(offset)),
+              seq(SetGlobal(V(m), global_hp),
+                  (* 関数のindexを保存 *)
+                  Let((z, Type.Int), FunTableIndex(l),
+                      seq(Storei(V(z), x, 0),
+                          store_fv)))))
   | Closure.AppCls(x, ys) ->
       (* xの型情報を残す *)
       let fty = M.find x env in
       let sigid = "sig." ^ x in
       let () = type_sigs := M.add sigid fty !type_sigs in
         (* グローバル変数にクロージャのアドレスを保存 *)
-        seq(SetGlobal(x, global_cp),
+        seq(SetGlobal(V(x), global_cp),
             Ans(CallCls(x, sigid, ys)))
   | Closure.AppDir(Id.L(x), ys) ->
       (* [XXX] ad-hoc detection of external function *)
@@ -113,23 +111,21 @@ let rec g env ty = function
   | Closure.Tuple(xs) ->
       let y = Id.genid "t" in (* tupleの位置 *)
       let m = Id.genid "m" in (* 保存後のglobal_hp *)
-      let imm = Id.genid "i" in
       let (offset, store) =
         classify
           (List.map (fun x -> (x, M.find x env)) xs)
           (0, Ans(Var(y)))
           (fun (offset, store) x ->
              (offset + 4,
-              seq(Storef(x, y, offset), store)))
+              seq(Storef(Vf(x), y, offset), store)))
           (fun (offset, store) x _ ->
              (offset + 4,
-              seq(Storei(x, y, offset), store)))  in
-      Let((y, Type.Tuple(List.map (fun x -> M.find x env) xs)),
-          GetGlobal(global_hp),
-          Let((imm, Type.Int), Consti(offset),
-              Let((m, Type.Int), Add(y, imm),
-                  seq(SetGlobal(m, global_hp),
-                      store))))
+              seq(Storei(V(x), y, offset), store)))  in
+        Let((y, Type.Tuple(List.map (fun x -> M.find x env) xs)),
+            GetGlobal(global_hp),
+            Let((m, Type.Int), Add(V(y), C(offset)),
+                seq(SetGlobal(V(m), global_hp),
+                    store)))
   | Closure.LetTuple(xts, y, e2) ->
       let s = Closure.fv e2 in
       let (_, load) =
@@ -151,37 +147,31 @@ let rec g env ty = function
       load
   | Closure.Get(x, y) ->
       let offset = Id.genid "o" in
-      let imm = Id.genid "i" in
       let addr = Id.genid "m" in
       (match M.find x env with
       | Type.Array(Type.Unit) -> Ans(Nop)
       | Type.Array(Type.Float) ->
-          Let((imm, Type.Int), Consti(2),
-              Let((offset, Type.Int), Shl(y, imm),
-                  Let((addr, Type.Int), Add(x, offset),
-                      Ans(Loadf(addr, 0)))))
+          Let((offset, Type.Int), Shl(V(y), C(2)),
+              Let((addr, Type.Int), Add(V(x), V(offset)),
+                  Ans(Loadf(addr, 0))))
       | Type.Array(_) ->
-          Let((imm, Type.Int), Consti(2),
-              Let((offset, Type.Int), Shl(y, imm),
-                  Let((addr, Type.Int), Add(x, offset),
-                      Ans(Loadi(addr, 0)))))
+          Let((offset, Type.Int), Shl(V(y), C(2)),
+              Let((addr, Type.Int), Add(V(x), V(offset)),
+                  Ans(Loadi(addr, 0))))
       | _ -> assert false)
   | Closure.Put(x, y, z) ->
       let offset = Id.genid "o" in
-      let imm = Id.genid "i" in
       let addr = Id.genid "m" in
       (match M.find x env with
       | Type.Array(Type.Unit) -> Ans(Nop)
       | Type.Array(Type.Float) ->
-          Let((imm, Type.Int), Consti(2),
-              Let((offset, Type.Int), Shl(y, imm),
-                  Let((addr, Type.Int), Add(x, offset),
-                      Ans(Storef(z, addr, 0)))))
+          Let((offset, Type.Int), Shl(V(y), C(2)),
+              Let((addr, Type.Int), Add(V(x), V(offset)),
+                  Ans(Storef(Vf(z), addr, 0))))
       | Type.Array(_) ->
-          Let((imm, Type.Int), Consti(2),
-              Let((offset, Type.Int), Shl(y, imm),
-                  Let((addr, Type.Int), Add(x, offset),
-                      Ans(Storei(z, addr, 0)))))
+          Let((offset, Type.Int), Shl(V(y), C(2)),
+              Let((addr, Type.Int), Add(V(x), V(offset)),
+                  Ans(Storei(V(z), addr, 0))))
       | _ -> assert false)
   | Closure.ExtArray(Id.L(x)) -> Ans(ExtArray(Id.L("min_caml_" ^ x)))
 

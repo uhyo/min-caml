@@ -1,5 +1,7 @@
 val extension: string
 
+type id_or_imm = V of Id.t | C of int
+type id_or_immf= Vf of Id.t | F of float
 type t = 
   | Ans of exp
   | Let of (Id.t * Type.t) * exp * t
@@ -9,35 +11,35 @@ and exp =
   | Consti of int
   | Constf of float
   (* arithmetic *)
-  | Add of Id.t * Id.t
-  | Sub of Id.t * Id.t
-  | Mul of Id.t * Id.t
-  | Div of Id.t * Id.t
-  | Shl of Id.t * Id.t
-  | FAdd of Id.t * Id.t
-  | FSub of Id.t * Id.t
-  | FMul of Id.t * Id.t
-  | FDiv of Id.t * Id.t
+  | Add of id_or_imm * id_or_imm
+  | Sub of id_or_imm * id_or_imm
+  | Mul of id_or_imm * id_or_imm
+  | Div of id_or_imm * id_or_imm
+  | Shl of id_or_imm * id_or_imm
+  | FAdd of id_or_immf * id_or_immf
+  | FSub of id_or_immf * id_or_immf
+  | FMul of id_or_immf * id_or_immf
+  | FDiv of id_or_immf * id_or_immf
   (* linear memory *)
   | Loadi of Id.t * int
   | Loadf of Id.t * int
-  | Storei of Id.t * Id.t * int (* value, address, offset *)
-  | Storef of Id.t * Id.t * int
+  | Storei of id_or_imm * Id.t * int (* value, address, offset *)
+  | Storef of id_or_immf * Id.t * int
   (* globals *)
   | GetGlobal of Id.t
-  | SetGlobal of Id.t * Id.t (* value, global name *)
+  | SetGlobal of id_or_imm * Id.t (* value, global name *)
   (* control instructions *)
-  | IfEq of Type.t * Id.t * Id.t * t * t
-  | IfLE of Type.t * Id.t * Id.t * t * t
-  | IfFEq of Type.t * Id.t * Id.t * t * t
-  | IfFLE of Type.t * Id.t * Id.t * t * t
+  | IfEq of Type.t * id_or_imm * id_or_imm * t * t
+  | IfLE of Type.t * id_or_imm * id_or_imm * t * t
+  | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
+  | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
   (* closure address, expected closure type, arguments *)
   | CallCls of Id.t * Id.t * Id.t list
   | CallDir of Id.l * Id.t list
   (* virtual instructions *)
   | Var of Id.t
   | FunTableIndex of Id.l (* get index of function registerd in *the* table. *)
-  | ExtArray of Id.l (* TODO *)
+  | ExtArray of Id.l
 
 (* function definition. *)
 type fundef = { name : Id.l; args : (Id.t * Type.t) list; body : t; ret : Type.t }
