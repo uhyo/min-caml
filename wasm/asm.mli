@@ -71,6 +71,7 @@ val global_cp : Id.t
 
 val seq : exp * t -> t
 
+val fv_exp : exp -> Id.t list
 val fv : t -> Id.t list
 val localvs: t -> (Id.t * Type.t) list
 val concat : t -> Id.t * Type.t -> t -> t
