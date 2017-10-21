@@ -133,8 +133,8 @@ and gimmf env = function
   | Vf(x) as v -> (v, S.singleton x)
   | v -> (v, S.empty)
 
-let h { name = l; args; body = e; ret = t } =
-  { name = l; args; body = fst (g M.empty e); ret = t }
+let h { name = l; args; fargs; body = e; ret = t } =
+  { name = l; args; fargs; body = fst (g M.empty e); ret = t }
 
 let f prog =
   {

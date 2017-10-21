@@ -36,14 +36,14 @@ and exp =
   | IfLE of Type.t * id_or_imm * id_or_imm * t * t
   | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
   | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
-  (* closure address, expected closure type, arguments *)
-  | CallCls of Id.t * Id.t * Id.t list
-  | CallDir of Id.l * Id.t list
+  (* closure address, expected closure type, int arguments, float arguments *)
+  | CallCls of Id.t * Id.t * Id.t list * Id.t list
+  | CallDir of Id.l * Id.t list * Id.t list
   (* virtual instructions *)
   | Var of Id.t
   | FunTableIndex of Id.l (* get index of function registerd in *the* table. *)
   | ExtArray of Id.l
-type fundef = { name : Id.l; args : (Id.t * Type.t) list; body : t; ret : Type.t }
+type fundef = { name : Id.l; args : Id.t list; fargs : Id.t list; body : t; ret : Type.t }
 (* function table entry. *)
 type fentry = {
   name: Id.l;
@@ -98,8 +98,8 @@ let rec fv_exp = function
   | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) -> fv_immf x @ fv_immf y
   | IfEq(_, x, y, e1, e2) | IfLE(_, x, y, e1, e2) -> fv_imm x @ fv_imm y @ remove_and_uniq S.empty (fv e1 @ fv e2)
   | IfFEq(_, x, y, e1, e2) | IfFLE(_, x, y, e1, e2) -> fv_immf x @ fv_immf y @ remove_and_uniq S.empty (fv e1 @ fv e2)
-  | CallCls(x, _, ys) -> x :: ys
-  | CallDir(_, ys) -> ys
+  | CallCls(x, _, ys, zs) -> x :: ys @ zs
+  | CallDir(_, ys, zs) -> ys @ zs
 and fv = function
   | Ans(exp) -> fv_exp exp
   | Let((x, t), exp, e) ->

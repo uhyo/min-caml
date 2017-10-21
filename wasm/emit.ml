@@ -151,21 +151,27 @@ and gexp oc = function
       Printf.fprintf oc "    )\n    (else\n";
       g oc n2;
       Printf.fprintf oc "    ))\n";
-  | CallCls(f, sign, args) ->
+  | CallCls(f, sign, args, fargs) ->
       (* push arguments onto the stack. *)
       List.iter
         (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
         args;
+      List.iter
+        (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
+        fargs;
       (* Load function index. *)
       Printf.fprintf oc "    get_local %s\n" (local_name f);
       Printf.fprintf oc "    i32.load offset=0 align=4\n";
       (* call. *)
       Printf.fprintf oc "    call_indirect %s\n" (local_name sign);
-  | CallDir(f, args) ->
+  | CallDir(f, args, fargs) ->
       (* push arguments onto the stack. *)
       List.iter
         (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
         args;
+      List.iter
+        (fun x -> Printf.fprintf oc "    get_local %s\n" (local_name x))
+        fargs;
       (* call. *)
       Printf.fprintf oc "    call %s\n" (func_name f);
   | Var(x) ->
@@ -187,16 +193,22 @@ and gvf oc = function
   | Vf(x) -> Printf.fprintf oc "    get_local %s\n" (local_name x)
   | F(f) -> Printf.fprintf oc "    f32.const %f\n" f
 
-let h oc { name; args; body = e; ret } =
+let h oc { name; args; fargs; body = e; ret } =
   (* Emit a function definition. *)
   Printf.fprintf oc "  (func %s" (func_name name);
   (* Declare function signature. *)
   List.iter
-    (fun (x, t) ->
+    (fun x ->
        Printf.fprintf oc " (param %s %s) "
          (local_name x)
-         (wat_type t))
+         (wat_type Type.Int))
     args;
+  List.iter
+    (fun x ->
+       Printf.fprintf oc " (param %s %s) "
+         (local_name x)
+         (wat_type Type.Float))
+    fargs;
   if ret <> Type.Unit then
     Printf.fprintf oc " (result %s)"
       (wat_type ret);

@@ -34,15 +34,15 @@ and exp =
   | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
   | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
   (* closure address, expected closure type, arguments *)
-  | CallCls of Id.t * Id.t * Id.t list
-  | CallDir of Id.l * Id.t list
+  | CallCls of Id.t * Id.t * Id.t list * Id.t list
+  | CallDir of Id.l * Id.t list * Id.t list
   (* virtual instructions *)
   | Var of Id.t
   | FunTableIndex of Id.l (* get index of function registerd in *the* table. *)
   | ExtArray of Id.l
 
 (* function definition. *)
-type fundef = { name : Id.l; args : (Id.t * Type.t) list; body : t; ret : Type.t }
+type fundef = { name : Id.l; args : Id.t list; fargs : Id.t list; body : t; ret : Type.t }
 (* function table entry. *)
 type fentry = {
   name: Id.l;

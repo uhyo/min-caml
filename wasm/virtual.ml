@@ -18,6 +18,14 @@ let classify xts ini addf addi =
     ini
     xts
 
+(* floatとそれ以外に分ける *)
+let classify_if xts =
+  classify
+    xts
+    ([], [])
+    (fun (int, float) x -> (int, x::float))
+    (fun (int, float) x _ -> (x::int, float))
+
 let expand xts ini addf addi =
   classify
     xts
@@ -95,9 +103,12 @@ let rec g env ty = function
       let fty = M.find x env in
       let sigid = "sig." ^ x in
       let () = type_sigs := M.add sigid fty !type_sigs in
+        (* int引数とfloat引数に分ける *)
+      let yts = List.map (fun y -> (y, M.find y env)) ys in
+      let (args, fargs) = classify_if yts in
         (* グローバル変数にクロージャのアドレスを保存 *)
         seq(SetGlobal(V(x), global_cp),
-            Ans(CallCls(x, sigid, ys)))
+            Ans(CallCls(x, sigid, args, fargs)))
   | Closure.AppDir(Id.L(x), ys) ->
       (* [XXX] ad-hoc detection of external function *)
       if 9 <= String.length x && "min_caml_" = String.sub x 0 9 then
@@ -107,7 +118,9 @@ let rec g env ty = function
             ty) in
           external_func := M.add x f_ty !external_func;
         end;
-      Ans(CallDir(Id.L(x), ys))
+      let yts = List.map (fun y -> (y, M.find y env)) ys in
+      let (args, fargs) = classify_if yts in
+      Ans(CallDir(Id.L(x), args, fargs))
   | Closure.Tuple(xs) ->
       let y = Id.genid "t" in (* tupleの位置 *)
       let m = Id.genid "m" in (* 保存後のglobal_hp *)
@@ -198,7 +211,12 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts
               (* firstly, load closure pointer from the global variable. *)
               Let((p, Type.Int), GetGlobal(global_cp), b)
           end in
-        { name = Id.L(x); args = yts; body = body; ret = t2 }
+      let (args, fargs) = classify
+                            yts
+                            ([], [])
+                            (fun (args, fargs) x -> (args, x::fargs))
+                            (fun (args, fargs) x _ -> (x::args, fargs)) in
+        { name = Id.L(x); args; fargs; body = body; ret = t2 }
   | _ -> assert false
 
 let f (Closure.Prog(fundefs, e)) =
