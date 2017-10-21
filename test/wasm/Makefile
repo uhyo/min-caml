@@ -11,8 +11,8 @@ TESTS = print sum-tail gcd sum fib ack even-odd \
 adder cls-rec cls-bug cls-bug2 \
 shuffle spill spill2 spill3 join-stack join-stack2 join-stack3 \
 join-reg join-reg2 non-tail-if non-tail-if2 \
-inprod inprod-rec inprod-loop matmul matmul-flat \
-manyargs funcomp cls-reg-bug
+inprod inprod-rec inprod-loop matmul-flat \
+funcomp cls-reg-bug matmul
 
 do_test: $(TESTS:%=%.cmp)
 

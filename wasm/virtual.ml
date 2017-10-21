@@ -86,9 +86,9 @@ let rec g env ty = function
           (List.map (fun y -> (y, M.find y env)) ys)
           (4, e2')
           (fun (offset, t) y -> 
-             (offset + 4, seq(Storef(Vf(y), z, offset), t)))
+             (offset + 4, seq(Storef(Vf(y), x, offset), t)))
           (fun (offset, t) y _ -> 
-             (offset + 4, seq(Storei(V(y), z, offset), t))) in
+             (offset + 4, seq(Storei(V(y), x, offset), t))) in
       let () = register_func_table l t in
       (* global_hpを取得した後移動させる *)
       Let((x, Type.Int), GetGlobal(global_hp),
@@ -213,7 +213,7 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts
           end in
       (* define myself. *)
       let body =
-        Let((x, t), FunTableIndex(Id.L(x)), body) in
+        Let((x, t), GetGlobal(global_cp), body) in
       let (args, fargs) =
         classify
           yts
