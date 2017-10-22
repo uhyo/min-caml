@@ -1,0 +1,13 @@
+WebAssembly backend for min-caml
+
+Author: uhyo <uhyo@uhyo.ooo>
+
+To enable the WebAssembly backend, execute ./to_wasm at the min-caml directory.
+
+To run tests, enter the test directory and run `make` there.
+
+The following softwares are required for running tests:
+
+  1. WebAssembly Binary Toolkit ( https://github.com/WebAssembly/wabt )
+
+  2. node.js 8.0.0 or later ( https://nodejs.org/en/ )
