@@ -19,10 +19,14 @@ and exp =
   | Mul of id_or_imm * id_or_imm
   | Div of id_or_imm * id_or_imm
   | Shl of id_or_imm * id_or_imm
+  | Eq of id_or_imm * id_or_imm
+  | LE of id_or_imm * id_or_imm
   | FAdd of id_or_immf * id_or_immf
   | FSub of id_or_immf * id_or_immf
   | FMul of id_or_immf * id_or_immf
   | FDiv of id_or_immf * id_or_immf
+  | FEq of id_or_immf * id_or_immf
+  | FLE of id_or_immf * id_or_immf
   (* linear memory *)
   | Loadi of Id.t * int
   | Loadf of Id.t * int
@@ -32,10 +36,7 @@ and exp =
   | GetGlobal of Id.t
   | SetGlobal of id_or_imm * Id.t (* value, global name *)
   (* control instructions *)
-  | IfEq of Type.t * id_or_imm * id_or_imm * t * t
-  | IfLE of Type.t * id_or_imm * id_or_imm * t * t
-  | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
-  | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
+  | If of Type.t * id_or_imm * t * t
   (* closure address, expected closure type, int arguments, float arguments *)
   | CallCls of Id.t * Id.t * id_or_imm list * id_or_immf list
   | CallDir of Id.l * id_or_imm list * id_or_immf list
@@ -94,10 +95,11 @@ let rec fv_exp = function
   | Storei(x, y, _) -> y :: fv_imm x
   | Storef(x, y, _) -> y :: fv_immf x
   | Add(x, y) | Sub(x, y) | Mul(x, y) | Div(x, y)
-  | Shl(x, y) -> fv_imm x @fv_imm y
-  | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) -> fv_immf x @ fv_immf y
-  | IfEq(_, x, y, e1, e2) | IfLE(_, x, y, e1, e2) -> fv_imm x @ fv_imm y @ remove_and_uniq S.empty (fv e1 @ fv e2)
-  | IfFEq(_, x, y, e1, e2) | IfFLE(_, x, y, e1, e2) -> fv_immf x @ fv_immf y @ remove_and_uniq S.empty (fv e1 @ fv e2)
+  | Shl(x, y) 
+  | Eq(x, y) | LE(x, y) -> fv_imm x @fv_imm y
+  | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) 
+  | FEq(x, y) | FLE(x, y) -> fv_immf x @ fv_immf y
+  | If(_, x, e1, e2)  -> fv_imm x @ remove_and_uniq S.empty (fv e1 @ fv e2)
   | CallCls(x, _, ys, zs) -> x :: List.fold_left
                                     (fun res y -> fv_imm y @ res)
                                     []
@@ -123,9 +125,7 @@ let fv e = remove_and_uniq S.empty (fv e)
 
 (* all local variables *)
 let rec localvs_exp = function
-  | IfEq(_, _, _, e1, e2) | IfLE(_, _, _, e1, e2)
-  | IfFEq(_, _, _, e1, e2) | IfFLE(_, _, _, e1, e2) ->
-      localvs e1 @ localvs e2
+  | If(__, _, e1, e2) -> localvs e1 @ localvs e2
   | _ -> []
 and localvs = function
   | Ans(exp) -> localvs_exp exp

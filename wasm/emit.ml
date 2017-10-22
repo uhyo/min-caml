@@ -70,6 +70,14 @@ and gexp oc = function
       gv oc x;
       gv oc y;
       Printf.fprintf oc "    i32.shl\n";
+  | Eq(x, y) ->
+      gv oc x;
+      gv oc y;
+      Printf.fprintf oc "    i32.eq\n";
+  | LE(x, y) ->
+      gv oc x;
+      gv oc y;
+      Printf.fprintf oc "    i32.le_s\n";
   | FAdd(x, y) ->
       gvf oc x;
       gvf oc y;
@@ -86,6 +94,14 @@ and gexp oc = function
       gvf oc x;
       gvf oc y;
       Printf.fprintf oc "    f32.div_s\n";
+  | FEq(x, y) ->
+      gvf oc x;
+      gvf oc y;
+      Printf.fprintf oc "    f32.eq\n";
+  | FLE(x, y) ->
+      gvf oc x;
+      gvf oc y;
+      Printf.fprintf oc "    f32.le\n";
   | Loadi(x, c) ->
       Printf.fprintf oc "    get_local %s\n" (local_name x);
       Printf.fprintf oc "    i32.load offset=%d align=4\n" c;
@@ -105,46 +121,8 @@ and gexp oc = function
   | SetGlobal(v, x) ->
       gv oc v;
       Printf.fprintf oc "    set_global %s\n" (local_name x);
-  | IfEq(ty, x, y, n1, n2) ->
+  | If(ty, x, n1, n2) ->
       gv oc x;
-      gv oc y;
-      Printf.fprintf oc "    i32.eq\n";
-      if ty = Type.Unit then
-        Printf.fprintf oc "    (if (then\n"
-      else
-        Printf.fprintf oc "    (if (result %s) (then\n" (wat_type ty);
-      g oc n1;
-      Printf.fprintf oc "    )\n    (else\n";
-      g oc n2;
-      Printf.fprintf oc "    ))\n";
-  | IfLE(ty, x, y, n1, n2) ->
-      gv oc x;
-      gv oc y;
-      Printf.fprintf oc "    i32.le_s\n";
-      if ty = Type.Unit then
-        Printf.fprintf oc "    (if (then\n"
-      else
-        Printf.fprintf oc "    (if (result %s) (then\n" (wat_type ty);
-      g oc n1;
-      Printf.fprintf oc "    )\n    (else\n";
-      g oc n2;
-      Printf.fprintf oc "    ))\n";
-  | IfFEq(ty, x, y, n1, n2) ->
-      gvf oc x;
-      gvf oc y;
-      Printf.fprintf oc "    f32.eq\n";
-      if ty = Type.Unit then
-        Printf.fprintf oc "    (if (then\n"
-      else
-        Printf.fprintf oc "    (if (result %s) (then\n" (wat_type ty);
-      g oc n1;
-      Printf.fprintf oc "    )\n    (else\n";
-      g oc n2;
-      Printf.fprintf oc "    ))\n";
-  | IfFLE(ty, x, y, n1, n2) ->
-      gvf oc x;
-      gvf oc y;
-      Printf.fprintf oc "    f32.le\n";
       if ty = Type.Unit then
         Printf.fprintf oc "    (if (then\n"
       else

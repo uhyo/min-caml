@@ -63,15 +63,25 @@ let rec g env ty = function
   | Closure.FMul(x, y) -> Ans(FMul(Vf(x), Vf(y)))
   | Closure.FDiv(x, y) -> Ans(FDiv(Vf(x), Vf(y)))
   | Closure.IfEq(x, y, e1, e2) ->
-      (match M.find x env with
-      | Type.Bool | Type.Int -> Ans(IfEq(ty, V(x), V(y), g env ty e1, g env ty e2))
-      | Type.Float -> Ans(IfFEq(ty, Vf(x), Vf(y), g env ty e1, g env ty e2))
-      | _ -> failwith "equality supported only for bool, int, and float")
+      let exp =
+        begin match M.find x env with
+          | Type.Bool | Type.Int -> Eq(V(x), V(y))
+          | Type.Float -> FEq(Vf(x), Vf(y))
+          | _ -> failwith "equality supported only for bool, int, and float"
+        end in
+      let tmp = Id.genid "b" in
+        Let((tmp, Type.Int), exp,
+            Ans(If(ty, V(tmp), g env ty e1, g env ty e2)))
   | Closure.IfLE(x, y, e1, e2) ->
-      (match M.find x env with
-      | Type.Bool | Type.Int -> Ans(IfLE(ty, V(x), V(y), g env ty e1, g env ty e2))
-      | Type.Float -> Ans(IfFLE(ty, Vf(x), Vf(y), g env ty e1, g env ty e2))
-      | _ -> failwith "inequality supported only for bool, int, and float")
+      let exp =
+        begin match M.find x env with
+          | Type.Bool | Type.Int -> LE(V(x), V(y))
+          | Type.Float -> FLE(Vf(x), Vf(y))
+          | _ -> failwith "equality supported only for bool, int, and float"
+        end in
+      let tmp = Id.genid "b" in
+        Let((tmp, Type.Int), exp,
+            Ans(If(ty, V(tmp), g env ty e1, g env ty e2)))
   | Closure.Let((x, t1), e1, e2) ->
       let e1' = g env t1 e1 in
       let e2' = g (M.add x t1 env) ty e2 in

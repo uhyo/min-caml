@@ -16,10 +16,14 @@ and exp =
   | Mul of id_or_imm * id_or_imm
   | Div of id_or_imm * id_or_imm
   | Shl of id_or_imm * id_or_imm
+  | Eq of id_or_imm * id_or_imm
+  | LE of id_or_imm * id_or_imm
   | FAdd of id_or_immf * id_or_immf
   | FSub of id_or_immf * id_or_immf
   | FMul of id_or_immf * id_or_immf
   | FDiv of id_or_immf * id_or_immf
+  | FEq of id_or_immf * id_or_immf
+  | FLE of id_or_immf * id_or_immf
   (* linear memory *)
   | Loadi of Id.t * int
   | Loadf of Id.t * int
@@ -29,10 +33,7 @@ and exp =
   | GetGlobal of Id.t
   | SetGlobal of id_or_imm * Id.t (* value, global name *)
   (* control instructions *)
-  | IfEq of Type.t * id_or_imm * id_or_imm * t * t
-  | IfLE of Type.t * id_or_imm * id_or_imm * t * t
-  | IfFEq of Type.t * id_or_immf * id_or_immf * t * t
-  | IfFLE of Type.t * id_or_immf * id_or_immf * t * t
+  | If of Type.t * id_or_imm * t * t
   (* closure address, expected closure type, arguments *)
   | CallCls of Id.t * Id.t * id_or_imm list * id_or_immf list
   | CallDir of Id.l * id_or_imm list * id_or_immf list
