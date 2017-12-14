@@ -1,6 +1,6 @@
 WebAssembly backend for min-caml
 
-Author: uhyo <uhyo@uhyo.ooo>
+Author: uhyo <uhyo@uhy.ooo>
 
 To enable the WebAssembly backend, execute ./to_wasm at the min-caml directory.
 
